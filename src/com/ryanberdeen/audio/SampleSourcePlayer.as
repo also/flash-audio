@@ -19,8 +19,6 @@ package com.ryanberdeen.audio {
     private var soundChannel:SoundChannel;
     private var playing:Boolean;
 
-    private var _sampleCount:Number;
-
     public function SampleSourcePlayer():void {
       outputSound = new Sound();
 
@@ -51,7 +49,15 @@ package com.ryanberdeen.audio {
     }
 
     public function get position():Number {
-      return soundChannel.position;
+      return Math.floor(soundChannel.position * 44.1);
+    }
+
+    public function get sourcePosition():Number {
+      return _sampleSource.toSourcePosition(position);
+    }
+
+    public function get sourceLength():Number {
+      return _sampleSource.length;
     }
 
     private function soundCompleteHandler(e:Event):void {
