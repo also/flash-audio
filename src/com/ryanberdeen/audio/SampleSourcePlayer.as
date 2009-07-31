@@ -17,6 +17,7 @@ package com.ryanberdeen.audio {
     private var _sampleSource:ISampleSource;
     private var outputSound:Sound;
     private var soundChannel:SoundChannel;
+    private var positionOffset:int;
     private var playing:Boolean;
 
     public function SampleSourcePlayer():void {
@@ -25,6 +26,8 @@ package com.ryanberdeen.audio {
       outputSound.addEventListener(SampleDataEvent.SAMPLE_DATA, function(e:SampleDataEvent):void {
         _sampleSource.extract(e.data, SAMPLE_BUFFER_SIZE);
       });
+
+      positionOffset = 0;
     }
 
     public function set sampleSource(sampleSource:ISampleSource):void {
@@ -43,13 +46,14 @@ package com.ryanberdeen.audio {
 
     public function stop():void {
       if (playing) {
+        positionOffset += soundChannel.position;
         soundChannel.stop();
         playing = false;
       }
     }
 
     public function get position():Number {
-      return Math.floor(soundChannel.position * 44.1);
+      return Math.floor((positionOffset + soundChannel.position) * 44.1);
     }
 
     public function get sourcePosition():Number {
