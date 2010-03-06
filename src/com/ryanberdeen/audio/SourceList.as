@@ -1,136 +1,99 @@
 /*
- * Copyright 2009 Ryan Berdeen. All rights reserved.
+ * Copyright 2010 Ryan Berdeen. All rights reserved.
  * Distributed under the terms of the MIT License.
  * See accompanying file LICENSE.txt
  */
 
 package com.ryanberdeen.audio {
-  import flash.media.Sound;
-  import flash.utils.ByteArray;
-  
-  import flash.external.ExternalInterface;
+    import flash.media.Sound;
+    import flash.utils.ByteArray;
 
-  /**
-  * Provides samples based on an arbitrary list of sample ranges.
-  */
-  public class SourceList implements ISampleSource {
-    private var _sources:Array;
-    private var _length:Number;
+    import flash.external.ExternalInterface;
 
-    private var sourceIndex:int;
-    private var source:ISampleSource;
-    private var extractionPosition:Number;
-    private var startPosition:Number;
-    private var finished:Boolean;
+    /**
+    * Provides samples based on a list of samples.
+    */
+    public class SourceList implements ISampleSource {
+        private var _sources:Array;
+        private var _length:Number;
 
-    private var positionRangeIndex:int;
-    private var localPosition:Number;
+        private var sli:SourceListItem;
+        private var outputPosition:Number;
+        private var finished:Boolean;
 
-    private var linearPosition:Number;
+        private var positionSli:SourceListItem;
 
-    public function set sources(sources:Array):void {
-      _sources = sources;
+        public function set sources(sources:Array):void {
+            _length = 0;
+            _sources = [];
+            var index:int = 0;
+            for each (var item:ISampleSource in sources) {
+                var s:SourceListItem = new SourceListItem();
+                s.startOffset = _length;
+                _length += item.length;
+                s.endOffset = _length;
+                s.length = item.length;
+                s.source = item;
+                s.index = index++;
+                _sources.push(s);
+            }
 
-      sourceIndex = 0;
-      source = _sources[sourceIndex];
+            sli = _sources[0];
+            positionSli = sli;
 
-      extractionPosition = 0;
-
-      startPosition = 0;
-
-      linearPosition = 0;
-      localPosition = extractionPosition;
-      positionRangeIndex = 0;
-
-      _length = 0;
-      for each (var s:ISampleSource in _sources) {
-        _length += s.length;
-      }
-    }
-
-    public function extract(target:ByteArray, length:Number, startPosition:Number = -1):Number {
-      if (startPosition != -1) {
-        if (startPosition != this.startPosition) {
-          var newPosition:Array = seek(this.startPosition, startPosition, extractionPosition, sourceIndex);
-          extractionPosition = newPosition[0];
-          sourceIndex = newPosition[1];
-          source = _sources[sourceIndex];
+            outputPosition = 0;
         }
-      }
 
-      var framesRead:int = 0;
-      while (!finished && framesRead < length) {
-        var framesLeft:int = source.length - extractionPosition;
-        var framesToRead:int = Math.min(framesLeft, length - framesRead);
-        source.extract(target, framesToRead, extractionPosition);
+        public function extract(target:ByteArray, length:Number, startPosition:Number = -1):Number {
+            if (startPosition != -1) {
+                if (startPosition != outputPosition) {
+                    outputPosition = startPosition;
+                    sli = seek(outputPosition, sli);
+                }
+            }
 
-        framesRead += framesToRead;
-        extractionPosition += framesToRead;
-        if (extractionPosition == source.length) {
-          sourceIndex++;
+            var framesRead:int = 0;
+            while (!finished && framesRead < length) {
+                var framesLeft:int = sli.endOffset - outputPosition;
+                var framesToRead:int = Math.min(framesLeft, length - framesRead);
+                sli.extract(target, framesToRead, outputPosition);
 
-          if (sourceIndex == _sources.length) {
-            finished = true;
-          }
-          else {
-            source = _sources[sourceIndex];
-            extractionPosition = 0;
-          }
+                framesRead += framesToRead;
+                outputPosition += framesToRead;
+                if (outputPosition == sli.endOffset) {
+                    if (sli.index == _sources.length - 1) {
+                        finished = true;
+                    }
+                    else {
+                        sli = _sources[sli.index + 1];
+                    }
+                }
+            }
+            return framesRead;
         }
-      }
 
-      this.startPosition = startPosition + framesRead;
-      return framesRead;
-    }
-
-    public function toSourcePosition(position:Number):Number {
-      var result:Array = seek(linearPosition, position, localPosition, positionRangeIndex);
-      linearPosition = position;
-      localPosition = result[0];
-      positionRangeIndex = result[1];
-      return result[0];
-    }
-
-    private function seek(linearStart:Number, linearEnd:Number, sourcePosition:Number, index:int):Array {
-      if (linearEnd < linearStart) {
-        // TODO might be faster to seek backwards and then seek forwards
-        linearStart = 0;
-        index = 0;
-        sourcePosition = 0;
-      }
-
-      var distance:Number = linearEnd - linearStart;
-
-      var source:ISampleSource;
-      var distanceLeft:Number;
-      var framesLeftThisSample:Number;
-
-      var framesAdvanced:Number = 0;
-      while (framesAdvanced < distance) {
-        source = _sources[index];
-        framesLeftThisSample = source.length - sourcePosition;
-        distanceLeft = distance - framesAdvanced;
-        if (framesLeftThisSample > distanceLeft) {
-          sourcePosition += distanceLeft;
-          framesAdvanced += distanceLeft;
+        public function toSourcePosition(position:Number):Number {
+            positionSli = seek(position, positionSli);
+            return positionSli.toSourcePosition(position);
         }
-        else {
-          index++;
-          if (index < _sources.length) {
-            sourcePosition = 0;
-          }
-          framesAdvanced += framesLeftThisSample;
+
+        private function seek(position:Number, seekSli:SourceListItem):SourceListItem {
+            while (position > seekSli.endOffset) {
+                seekSli = _sources[seekSli.index + 1];
+            }
+            while (position < seekSli.startOffset) {
+                seekSli = _sources[seekSli.index - 1];
+            }
+
+            return seekSli;
         }
-      }
-      return [sourcePosition, index];
-    }
 
-    public function get length():Number {
-      return _length;
-    }
+        public function get length():Number {
+            return _length;
+        }
 
-    public function get sampleSourceIndex():int {
-      return positionRangeIndex;
+        public function get sampleSourceIndex():int {
+            return positionSli.index;
+        }
     }
-  }
 }
