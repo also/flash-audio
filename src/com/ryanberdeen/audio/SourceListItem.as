@@ -13,11 +13,11 @@ package com.ryanberdeen.audio {
         public var endOffset:Number;
         public var length:Number;
         public var index:int;
-        
+
         public function toSourcePosition(position:Number):Number {
             return source.toSourcePosition(position - startOffset);
         }
-        
+
         public function extract(target:ByteArray, length:Number, startPosition:Number):Number {
             return source.extract(target, length, startPosition - startOffset);
         }

@@ -8,8 +8,6 @@ package com.ryanberdeen.audio {
     import flash.media.Sound;
     import flash.utils.ByteArray;
 
-    import flash.external.ExternalInterface;
-
     /**
     * Provides samples based on a list of samples.
     */
@@ -35,6 +33,7 @@ package com.ryanberdeen.audio {
                 s.length = item.length;
                 s.source = item;
                 s.index = index++;
+
                 _sources.push(s);
             }
 

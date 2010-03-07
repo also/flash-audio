@@ -23,8 +23,7 @@ package com.ryanberdeen.audio {
             if (startPosition == -1) {
                 startPosition = 0;
             }
-            var result:Number = source.extract(target, length, _offset + startPosition);
-            return result;
+            return source.extract(target, length, _offset + startPosition);
         }
 
         public function toSourcePosition(position:Number):Number {
