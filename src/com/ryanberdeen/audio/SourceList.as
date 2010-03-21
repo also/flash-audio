@@ -76,6 +76,11 @@ package com.ryanberdeen.audio {
             return positionSli.toSourcePosition(position);
         }
 
+        public function getSource(position:Number):Object {
+            positionSli = seek(position, positionSli);
+            return {index: positionSli.index, position: positionSli.toSourcePosition(position)};
+        }
+
         private function seek(position:Number, seekSli:SourceListItem):SourceListItem {
             while (position > seekSli.endOffset) {
                 seekSli = _sources[seekSli.index + 1];
